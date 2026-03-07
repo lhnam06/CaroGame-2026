@@ -1,0 +1,21 @@
+# Build outputs
+*.exe
+*.o
+*.obj
+*.out
+Caro.exe
+Caro_test.exe
+
+# IDE
+.vs/
+.vscode/
+*.suo
+*.user
+*.sln.docstates
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Save files (optional - remove if you want to track test saves)
+*.sav
