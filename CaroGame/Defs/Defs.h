@@ -9,6 +9,10 @@
 #define LEFT 3
 #define TOP 1
 
+/* Vung hien thi thong bao - duoi ban co va thong tin nguoi choi */
+#define MESSAGE_Y (TOP + 2 * BOARD_SIZE + 5)
+#define MESSAGE_WIDTH 60
+
 struct _POINT {
     int x, y, c;  /* x: dong, y: cot, c: 0=trong, -1=X, 1=O */
 };

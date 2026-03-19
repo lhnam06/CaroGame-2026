@@ -13,13 +13,14 @@
 void SaveGame(void) {
     char filename[256];
 
-    GotoXY(0, _A[BOARD_SIZE - 1][BOARD_SIZE - 1].y + 2);
+    ClearMessageArea();
+    GotoXY(LEFT, MESSAGE_Y);
     std::cout << "Nhap ten file muon luu: ";
     std::cin >> filename;
 
     std::ofstream f(filename);
     if (!f) {
-        std::cout << "Khong the tao file!\n";
+        ShowMessage("Khong the tao file!");
         return;
     }
 
@@ -32,19 +33,23 @@ void SaveGame(void) {
         f << "\n";
     }
     f.close();
-    std::cout << "Luu thanh cong!\n";
+
+    ShowMessage("Luu thanh cong!");
+    GotoXY(_X, _Y);
 }
 
 void LoadGame(void) {
     char filename[256];
 
-    GotoXY(0, _A[BOARD_SIZE - 1][BOARD_SIZE - 1].y + 2);
+    ClearMessageArea();
+    GotoXY(LEFT, MESSAGE_Y);
     std::cout << "Nhap ten file muon tai: ";
     std::cin >> filename;
 
     std::ifstream f(filename);
     if (!f) {
-        std::cout << "Khong tim thay file!\n";
+        ShowMessage("Khong tim thay file!");
+        GotoXY(_X, _Y);
         return;
     }
 
@@ -71,5 +76,6 @@ void LoadGame(void) {
         }
     }
     DrawPlayerInfo();
+    ClearMessageArea();
     GotoXY(_X, _Y);
 }

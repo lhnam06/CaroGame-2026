@@ -51,23 +51,35 @@ void DrawPlayerInfo(void) {
     std::cout << "Phim: W,A,S,D | Enter danh | L luu | T tai | ESC thoat";
 }
 
+void ClearMessageArea(void) {
+    for (int row = 0; row < 5; row++) {
+        GotoXY(LEFT, MESSAGE_Y + row);
+        for (int i = 0; i < MESSAGE_WIDTH; i++) std::cout << " ";
+    }
+}
+
+void ShowMessage(const char* msg) {
+    ClearMessageArea();
+    GotoXY(LEFT, MESSAGE_Y);
+    std::cout << msg;
+}
+
 void DrawWinEffect(int pWhoWin) {
-    int y = _A[BOARD_SIZE - 1][BOARD_SIZE - 1].y + 2;
-    GotoXY(LEFT, y);
-    for (int i = 0; i < 50; i++) std::cout << "=";
-    GotoXY(LEFT, y + 1);
+    ClearMessageArea();
+    GotoXY(LEFT, MESSAGE_Y);
+    std::cout << "============================================================";
+    GotoXY(LEFT, MESSAGE_Y + 1);
     if (pWhoWin == -1)
-        std::cout << "  >>> CHUC MUNG! Nguoi choi 1 (X) da thang! <<<  ";
+        std::cout << "   *** CHUC MUNG! Nguoi choi 1 (X) da thang! ***   ";
     else if (pWhoWin == 1)
-        std::cout << "  >>> CHUC MUNG! Nguoi choi 2 (O) da thang! <<<  ";
+        std::cout << "   *** CHUC MUNG! Nguoi choi 2 (O) da thang! ***   ";
     else if (pWhoWin == 0)
-        std::cout << "  >>> HAI BEN HOA NHAU! <<<  ";
-    GotoXY(LEFT, y + 2);
-    for (int i = 0; i < 50; i++) std::cout << "=";
+        std::cout << "   *** HAI BEN HOA NHAU! ***   ";
+    GotoXY(LEFT, MESSAGE_Y + 2);
+    std::cout << "============================================================";
 }
 
 int ProcessFinish(int pWhoWin) {
-    GotoXY(0, _A[BOARD_SIZE - 1][BOARD_SIZE - 1].y + 2);
     switch (pWhoWin) {
         case -1:
             _WIN_P1++;
@@ -89,8 +101,8 @@ int ProcessFinish(int pWhoWin) {
 }
 
 int AskContinue(void) {
-    GotoXY(0, _A[BOARD_SIZE - 1][BOARD_SIZE - 1].y + 5);
-    std::cout << "Nhan 'Y' tiep tuc, phim bat ky de thoat: ";
+    GotoXY(LEFT, MESSAGE_Y + 4);
+    std::cout << "Nhan 'Y' de choi tiep, phim bat ky de thoat: ";
 #ifdef _WIN32
     return toupper(getch());
 #else
