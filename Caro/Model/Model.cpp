@@ -19,6 +19,11 @@ void ResetData(void) {
     _Y = 0; 
     _MOVE_P1 = 0;
     _MOVE_P2 = 0;
+    _MOVE_COUNT = 0;
+    _UNDO_TOP = 0;
+    for (int i = 0; i < BOARD_SIZE; i++)
+        for (int j = 0; j < BOARD_SIZE; j++)
+            _MOVE_ORDER[i][j] = 0;
 }
 
 void GabageCollect(void) {

@@ -6,7 +6,8 @@ SRCS = main.cpp \
        Model/Model.cpp \
        Control/Control.cpp \
        SaveLoad/SaveLoad.cpp \
-       Menu/Menu.cpp
+       Menu/Menu.cpp \
+       Bot/Bot.cpp
 
 all:
 	$(CXX) -I. -o $(TARGET).exe $(SRCS)

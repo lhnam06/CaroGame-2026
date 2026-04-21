@@ -15,7 +15,6 @@ void DrawO(int row, int col);      // Vẽ quân O
 void DrawCursor(int row, int col); // Vẽ khung báo hiệu đang chọn ô nào
 void RenderGame(void);             // Hàm tổng hợp: Xóa màn hình -> Vẽ lưới -> Vẽ cờ -> Vẽ trỏ
 void DrawPlayerInfo(void);
-void RenderGame(void);
 void DrawWinningLine(int winner);
 
 

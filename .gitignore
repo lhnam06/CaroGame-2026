@@ -6,6 +6,18 @@
 Caro.exe
 Caro_test.exe
 
+# Visual Studio / MSVC build artifacts
+**/x64/
+**/Debug/
+**/Release/
+**/caroo/
+*.pdb
+*.ilk
+*.idb
+*.tlog
+*.recipe
+*.log
+
 # IDE
 .vs/
 .vscode/
