@@ -1,17 +1,24 @@
 ﻿#ifndef AUDIO_H
 #define AUDIO_H
 
-#include <tchar.h> // Thêm thư viện này để dùng được chữ _T
+void InitAudioPaths(void);
 
-void PlayBGM(const TCHAR* filePath);
-
-void StopBGM();    // Tắt hẳn
-void PauseBGM();    // Tạm ngưng
-void ResumeBGM();   // Phát tiếp
+void PlayMenuBGM(void);
+void PlayGameBGM(void);
+void StopBGM();
+void PauseBGM();
+void ResumeBGM();
 
 void PlayClickSound();
-void PlayXO();
+void PlayXSound();
+void PlayOSound();
+void PlayStoneSound(int piece);
+void PlayWinSound();
+void PlaySaveSound();
+void PlayLoadSound();
 void SetVolume(int vol);
-int GetVolume();
+int GetVolume(void);
+int GetVolumePercent(void);
+void SetVolumePercent(int percent);
 
 #endif

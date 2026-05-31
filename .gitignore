@@ -31,3 +31,7 @@ Thumbs.db
 
 # Save files (optional - remove if you want to track test saves)
 *.sav
+Caro/*.txt
+
+# Local deploy test copies
+**/_deploy_test/

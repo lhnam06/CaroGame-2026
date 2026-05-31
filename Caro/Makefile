@@ -7,10 +7,14 @@ SRCS = main.cpp \
        Control/Control.cpp \
        SaveLoad/SaveLoad.cpp \
        Menu/Menu.cpp \
-       Bot/Bot.cpp
+       Bot/Bot.cpp \
+       Audio/Audio.cpp
 
-all:
-	$(CXX) -I. -o $(TARGET).exe $(SRCS)
+all: assets
+	$(CXX) -I. -std=c++17 -o $(TARGET).exe $(SRCS)
+
+assets:
+	deploy_assets.cmd . .
 
 clean:
 	del $(TARGET).exe 2>nul || true

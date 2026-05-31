@@ -155,22 +155,17 @@ static bool DoUndo(void) {
  * Handle game-over display and result
  * --------------------------------------------------------------- */
 static void HandleGameOver(int winner, bool& isPlaying) {
-    RenderGame();
     if (winner == -1 || winner == 1) {
         if (winner == -1) _WIN_P1++;
         else              _WIN_P2++;
-        DrawWinningLine(winner);
-    }
-    FlushBatchDraw();
-    PlayClickSound();
-
-    if (winner == -1)
-        ShowNotifyDialog(_T("MATCH OVER"), _VS_BOT ? _T("You (X) WINS the game!") : _T("Player 1 (X) WINS the game!"));
-    else if (winner == 1)
-        ShowNotifyDialog(_T("MATCH OVER"), _VS_BOT ? _T("Computer (O) WINS the game!") : _T("Player 2 (O) WINS the game!"));
-    else
+        PlayWinSound();
+        ShowWinScreenUntilDismiss(winner);
+    } else {
+        RenderGame();
+        FlushBatchDraw();
+        PlayClickSound();
         ShowNotifyDialog(_T("MATCH OVER"), _T("The board is full. It's a DRAW!"));
-
+    }
     isPlaying = false;
 }
 
@@ -181,7 +176,7 @@ static void HandleGameOver(int winner, bool& isPlaying) {
 static bool PlaceStone(int r, int c, int piece, bool& isPlaying) {
     _A[r][c].c = piece;
     RecordMove(r, c, piece);
-    PlayXO();
+    PlayStoneSound(piece);
     int winner = TestBoard();
     if (winner != 2) {
         HandleGameOver(winner, isPlaying);
@@ -262,38 +257,56 @@ int main() {
                             }
                         }
                     }
+                } else if (msg.message == WM_MOUSEMOVE) {
+                    int hoverRow, hoverCol;
+                    if (BoardPointToCell(msg.x, msg.y, &hoverRow, &hoverCol)) {
+                        if (hoverRow != _X || hoverCol != _Y) {
+                            _X = hoverRow;
+                            _Y = hoverCol;
+                            needsRedraw = true;
+                        }
+                    }
                 } else if (msg.message == WM_LBUTTONDOWN) {
                     int mx = msg.x;
                     int my = msg.y;
 
                     // Pause / menu button
-                    if (mx >= 718 && mx <= 770 && my >= 18 && my <= 70) {
-                        PlayClickSound();
-                        PauseBGM();
-                        int action = ShowPauseMenu();
-                        if (action == 1) {
-                            ResumeBGM();
-                            needsRedraw = true;
-                            skipToNextFrame = true;
-                            break;
-                        } else if (action == 2) {
-                            ShowSettingsMenu();
-                            ResumeBGM();
-                            needsRedraw = true;
-                            skipToNextFrame = true;
-                            break;
-                        } else if (action == 3) {
-                            isPlaying = false;
-                            PlayBGM(_T("Audio\\bgm.mp3"));
-                            skipToNextFrame = true;
-                            break;
+                    {
+                        int menuX = SCREEN_W - UiScale(82);
+                        int menuY = UiScale(18);
+                        int menuS = UiScale(56);
+                        if (mx >= menuX && mx <= menuX + menuS && my >= menuY && my <= menuY + menuS) {
+                            PlayClickSound();
+                            PauseBGM();
+                            int action = ShowPauseMenu();
+                            if (action == 1) {
+                                ResumeBGM();
+                                needsRedraw = true;
+                                skipToNextFrame = true;
+                                break;
+                            } else if (action == 2) {
+                                ShowSettingsMenu();
+                                ResumeBGM();
+                                needsRedraw = true;
+                                skipToNextFrame = true;
+                                break;
+                            } else if (action == 3) {
+                                isPlaying = false;
+                                PlayMenuBGM();
+                                skipToNextFrame = true;
+                                break;
+                            }
                         }
                     }
 
-                    // Undo button in HUD (646..700, 526+8..526+54)
-                    if (mx >= 646 && mx <= 700 && my >= 534 && my <= 580) {
-                        if (DoUndo()) { PlayClickSound(); needsRedraw = true; }
-                        break;
+                    // Undo button in HUD
+                    {
+                        int undoX, undoY, undoW, undoH;
+                        GetUndoButtonRect(&undoX, &undoY, &undoW, &undoH);
+                        if (mx >= undoX && mx <= undoX + undoW && my >= undoY && my <= undoY + undoH) {
+                            if (DoUndo()) { PlayClickSound(); needsRedraw = true; }
+                            break;
+                        }
                     }
 
                     // Board click
@@ -322,8 +335,6 @@ int main() {
                 RenderGame();
                 FlushBatchDraw();
                 needsRedraw = false;
-            } else if (isPlaying) {
-                Sleep(16);
             }
         }
         EndBatchDraw();

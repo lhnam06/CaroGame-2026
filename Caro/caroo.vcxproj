@@ -70,10 +70,10 @@
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>true</LinkIncremental>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LinkIncremental>true</LinkIncremental>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -85,13 +85,7 @@
       <SubSystem>Windows</SubSystem>
     </Link>
     <PostBuildEvent>
-      <Command>if not exist "$(OutDir)UI_PNG" mkdir "$(OutDir)UI_PNG"
-xcopy /E /I /Y "$(ProjectDir)UI_PNG\*" "$(OutDir)UI_PNG\"
-if not exist "$(OutDir)Audio" mkdir "$(OutDir)Audio"
-xcopy /Y "$(ProjectDir)Audio\*.mp3" "$(OutDir)Audio\"
-if exist "$(ProjectDir)UI_PNG\menu_bgm.jpg" copy /Y "$(ProjectDir)UI_PNG\menu_bgm.jpg" "$(OutDir)menu_bg.jpg"
-if not exist "$(OutDir)fonts" mkdir "$(OutDir)fonts"
-xcopy /E /I /Y "$(ProjectDir)fonts\*" "$(OutDir)fonts\"</Command>
+      <Command>"$(ProjectDir)deploy_assets.cmd" "$(ProjectDir)" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -106,13 +100,7 @@ xcopy /E /I /Y "$(ProjectDir)fonts\*" "$(OutDir)fonts\"</Command>
       <SubSystem>Console</SubSystem>
     </Link>
     <PostBuildEvent>
-      <Command>if not exist "$(OutDir)UI_PNG" mkdir "$(OutDir)UI_PNG"
-xcopy /E /I /Y "$(ProjectDir)UI_PNG\*" "$(OutDir)UI_PNG\"
-if not exist "$(OutDir)Audio" mkdir "$(OutDir)Audio"
-xcopy /Y "$(ProjectDir)Audio\*.mp3" "$(OutDir)Audio\"
-if exist "$(ProjectDir)UI_PNG\menu_bgm.jpg" copy /Y "$(ProjectDir)UI_PNG\menu_bgm.jpg" "$(OutDir)menu_bg.jpg"
-if not exist "$(OutDir)fonts" mkdir "$(OutDir)fonts"
-xcopy /E /I /Y "$(ProjectDir)fonts\*" "$(OutDir)fonts\"</Command>
+      <Command>"$(ProjectDir)deploy_assets.cmd" "$(ProjectDir)" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -127,13 +115,7 @@ xcopy /E /I /Y "$(ProjectDir)fonts\*" "$(OutDir)fonts\"</Command>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PostBuildEvent>
-      <Command>if not exist "$(OutDir)UI_PNG" mkdir "$(OutDir)UI_PNG"
-xcopy /E /I /Y "$(ProjectDir)UI_PNG\*" "$(OutDir)UI_PNG\"
-if not exist "$(OutDir)Audio" mkdir "$(OutDir)Audio"
-xcopy /Y "$(ProjectDir)Audio\*.mp3" "$(OutDir)Audio\"
-if exist "$(ProjectDir)UI_PNG\menu_bgm.jpg" copy /Y "$(ProjectDir)UI_PNG\menu_bgm.jpg" "$(OutDir)menu_bg.jpg"
-if not exist "$(OutDir)fonts" mkdir "$(OutDir)fonts"
-xcopy /E /I /Y "$(ProjectDir)fonts\*" "$(OutDir)fonts\"</Command>
+      <Command>"$(ProjectDir)deploy_assets.cmd" "$(ProjectDir)" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -150,13 +132,7 @@ xcopy /E /I /Y "$(ProjectDir)fonts\*" "$(OutDir)fonts\"</Command>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PostBuildEvent>
-      <Command>if not exist "$(OutDir)UI_PNG" mkdir "$(OutDir)UI_PNG"
-xcopy /E /I /Y "$(ProjectDir)UI_PNG\*" "$(OutDir)UI_PNG\"
-if not exist "$(OutDir)Audio" mkdir "$(OutDir)Audio"
-xcopy /Y "$(ProjectDir)Audio\*.mp3" "$(OutDir)Audio\"
-if exist "$(ProjectDir)UI_PNG\menu_bgm.jpg" copy /Y "$(ProjectDir)UI_PNG\menu_bgm.jpg" "$(OutDir)menu_bg.jpg"
-if not exist "$(OutDir)fonts" mkdir "$(OutDir)fonts"
-xcopy /E /I /Y "$(ProjectDir)fonts\*" "$(OutDir)fonts\"</Command>
+      <Command>"$(ProjectDir)deploy_assets.cmd" "$(ProjectDir)" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

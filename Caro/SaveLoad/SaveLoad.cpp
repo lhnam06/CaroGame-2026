@@ -12,9 +12,55 @@
 #include <chrono>
 #include <ctime>
 
+#include <windows.h>
+
 extern std::string _SELECTED_FILE;
 
 namespace fs = std::filesystem;
+
+static void NameToUtf8(const TCHAR* wide, std::string& out) {
+    out.clear();
+    if (!wide || !wide[0]) return;
+#ifdef UNICODE
+    char buf[128];
+    int n = WideCharToMultiByte(CP_UTF8, 0, wide, -1, buf, (int)sizeof(buf), NULL, NULL);
+    if (n > 0) out.assign(buf);
+#else
+    out.assign(wide);
+#endif
+}
+
+static void Utf8ToName(const std::string& utf8, TCHAR* wide, size_t wideCount) {
+    if (wideCount == 0) return;
+    wide[0] = 0;
+    if (utf8.empty()) return;
+#ifdef UNICODE
+    MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, wide, (int)wideCount);
+#else
+    _tcscpy_s(wide, wideCount, utf8.c_str());
+#endif
+}
+
+static void SplitPipe2(const std::string& s, std::string& a, std::string& b) {
+    size_t p = s.find('|');
+    if (p == std::string::npos) {
+        a = s;
+        b.clear();
+        return;
+    }
+    a = s.substr(0, p);
+    b = s.substr(p + 1);
+}
+
+static bool ParseBoardRow(const std::string& line, int row, std::ifstream* f) {
+    std::istringstream rs(line);
+    for (int j = 0; j < BOARD_SIZE; j++) {
+        if (!(rs >> _A[row][j].c)) return false;
+        _A[row][j].x = row;
+        _A[row][j].y = j;
+    }
+    return true;
+}
 
 static void FormatTimeT(TCHAR* buf, size_t bufCount, std::time_t tt) {
     std::tm lt = {};
@@ -68,7 +114,13 @@ void SaveGame(void) {
     }
 
     f << _TURN << " " << _X << " " << _Y << " "
-      << _WIN_P1 << " " << _WIN_P2 << " " << _MOVE_P1 << " " << _MOVE_P2 << " " << _VS_BOT << "\n";
+      << _WIN_P1 << " " << _WIN_P2 << " " << _MOVE_P1 << " " << _MOVE_P2 << " "
+      << _VS_BOT << " " << _CHAR_P1 << " " << _CHAR_P2 << "\n";
+
+    std::string n1, n2;
+    NameToUtf8(_NAME_P1, n1);
+    NameToUtf8(_NAME_P2, n2);
+    f << "#NAMES " << n1 << "|" << n2 << "\n";
 
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
@@ -84,6 +136,7 @@ void SaveGame(void) {
 
     f.close();
 
+    PlaySaveSound();
     MessageBox(GetHWnd(), _T("Game saved successfully!"), _T("Notification"), MB_OK | MB_ICONINFORMATION);
 }
 
@@ -112,14 +165,40 @@ void LoadGame(void) {
     ls >> _TURN >> _X >> _Y >> _WIN_P1 >> _WIN_P2 >> _MOVE_P1 >> _MOVE_P2;
     if (!(ls >> _VS_BOT))
         _VS_BOT = 0;
+    if (!(ls >> _CHAR_P1))
+        _CHAR_P1 = 1;
+    if (!(ls >> _CHAR_P2))
+        _CHAR_P2 = 2;
 
-    for (int i = 0; i < BOARD_SIZE; i++) {
+    std::string nextLine;
+    int boardRow = 0;
+    if (std::getline(f, nextLine)) {
+        if (nextLine.size() >= 7 && nextLine.compare(0, 7, "#NAMES ") == 0) {
+            std::string payload = nextLine.substr(7);
+            std::string n1, n2;
+            SplitPipe2(payload, n1, n2);
+            Utf8ToName(n1, _NAME_P1, 32);
+            Utf8ToName(n2, _NAME_P2, 32);
+            boardRow = 0;
+        } else {
+            if (!ParseBoardRow(nextLine, 0, &f)) {
+                MessageBox(GetHWnd(), _T("Cannot read file!"), _T("Error"), MB_OK | MB_ICONERROR);
+                _SELECTED_FILE = "";
+                return;
+            }
+            boardRow = 1;
+        }
+    }
+
+    for (int i = boardRow; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
             f >> _A[i][j].c;
             _A[i][j].x = i;
             _A[i][j].y = j;
         }
     }
+
+    ReloadAvatars();
 
     std::string savedInFile;
     std::string tail;
@@ -134,7 +213,8 @@ void LoadGame(void) {
 
     f.close();
 
-    PlayBGM(_T("Audio\\game_bgm.mp3"));
+    PlayLoadSound();
+    PlayGameBGM();
 
     _SELECTED_FILE = "";
 

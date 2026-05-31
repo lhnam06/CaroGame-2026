@@ -26,7 +26,8 @@ void MoveUp(void) {
 
 void StartGame(void) {
     ResetData();
-    DrawBoard(); 
+    ReloadAvatars();
+    DrawBoard();
 }
 
 void ExitGame(void) {

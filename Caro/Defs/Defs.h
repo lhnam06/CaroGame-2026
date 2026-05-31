@@ -5,10 +5,20 @@
 #ifndef DEFS_H
 #define DEFS_H
 
+#include <tchar.h>
+
 #define BOARD_SIZE 12
-#define CELL_SIZE  40  // Mỗi ô vuông rộng 40 pixel
-#define OFFSET_X   50  // Cách lề trái màn hình 50 pixel
-#define OFFSET_Y   50  // Cách lề trên màn hình 50 pixel
+#define DESIGN_W   1280
+#define DESIGN_H   960
+
+extern int CELL_SIZE;
+extern int OFFSET_X;
+extern int OFFSET_Y;
+extern int SCREEN_W;
+extern int SCREEN_H;
+extern int UI_SCALE;
+
+#define CHAR_COUNT 23
 
 struct _POINT {
     int x, y, c;  /* x: dong, y: cot, c: 0=trong, -1=X, 1=O */
@@ -22,6 +32,10 @@ extern int _WIN_P1, _WIN_P2, _MOVE_P1, _MOVE_P2;
 extern int _WIN_R1, _WIN_C1; // Tọa độ hàng, cột của viên đầu tiên
 extern int _WIN_R2, _WIN_C2; // Tọa độ hàng, cột của viên cuối cùng
 extern int _VS_BOT;          // 1 = human (X) vs computer (O), 0 = two humans
+extern int _CHAR_P1;         // Selected character id (1..CHAR_COUNT)
+extern int _CHAR_P2;
+extern TCHAR _NAME_P1[32];   // Display name chosen in character select
+extern TCHAR _NAME_P2[32];
 
 // Board themes: 0 = warm wood, 1 = dark slate, 2 = golden
 extern int _BOARD_THEME;
