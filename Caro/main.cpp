@@ -166,7 +166,14 @@ static void HandleGameOver(int winner, bool& isPlaying) {
         PlayClickSound();
         ShowNotifyDialog(_T("MATCH OVER"), _T("The board is full. It's a DRAW!"));
     }
-    isPlaying = false;
+    // After showing win/draw UI, ask the player if they want to play again.
+    // If yes, start a fresh game immediately; otherwise end the current match.
+    if (ShowConfirmDialog(_T("PLAY AGAIN"), _T("Do you want to play another match?"))) {
+        StartGame();
+        isPlaying = true;
+    } else {
+        isPlaying = false;
+    }
 }
 
 /* ---------------------------------------------------------------
@@ -242,9 +249,15 @@ int main() {
                     } else if (msg.vkcode == 'D' || msg.vkcode == VK_RIGHT) {
                         MoveRight(); needsRedraw = true;
                     } else if (msg.vkcode == 'L') {
-                        SaveGame(); needsRedraw = true;
+                        if (ShowSaveMenuUI()) {
+                            SaveGame();
+                            needsRedraw = true;
+                        }
                     } else if (msg.vkcode == 'T') {
-                        LoadGame(); needsRedraw = true;
+                        if (ShowLoadMenuUI()) {
+                            LoadGame();
+                            needsRedraw = true;
+                        }
                     } else if (msg.vkcode == VK_BACK) {
                         // Backspace = undo shortcut
                         if (DoUndo()) needsRedraw = true;
