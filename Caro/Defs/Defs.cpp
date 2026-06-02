@@ -9,7 +9,7 @@ int OFFSET_X   = 50;
 int OFFSET_Y   = 50;
 int SCREEN_W   = 800;
 int SCREEN_H   = 600;
-int UI_SCALE   = 1;
+float UI_SCALE = 1.0f;
 
 struct _POINT _A[BOARD_SIZE][BOARD_SIZE];
 int _TURN;

@@ -39,6 +39,8 @@ static bool g_hasPngX        = false;
 static bool g_hasPngO        = false;
 static bool g_pixelFontLoaded = false;
 
+static constexpr float kUiZoom = 0.9f;
+
 static IMAGE imgCellLight[3];
 static IMAGE imgCellDark[3];
 static IMAGE imgBoardFrame[3];
@@ -67,8 +69,14 @@ static const TCHAR* kPixelFontPath = _T("fonts\\PressStart2P-Regular.ttf");
 
 static int AvatarSize(void) { return UiScale(36); }
 
+static int ScalePx(float px) {
+    int value = (int)px;
+    if (value < 1) value = 1;
+    return value;
+}
+
 int UiScale(int designPx) {
-    return (designPx * UI_SCALE);
+    return ScalePx((float)designPx * UI_SCALE);
 }
 
 int ScreenW(void) { return SCREEN_W; }
@@ -77,7 +85,7 @@ int ScreenH(void) { return SCREEN_H; }
 bool IsGameFontLoaded(void) { return g_pixelFontLoaded; }
 
 int GameFontPx(int designSize) {
-    int px = designSize * UI_SCALE;
+    int px = UiScale(designSize);
     if (px < 10) px = 10;
     return px;
 }
@@ -157,14 +165,14 @@ static void SetupScreenLayout(void) {
     int availW = work.right - work.left;
     int availH = work.bottom - work.top;
 
-    int scaleW = availW / DESIGN_W;
-    int scaleH = availH / DESIGN_H;
-    int scale = scaleW < scaleH ? scaleW : scaleH;
-    if (scale < 1) scale = 1;
+    float scaleW = (float)availW / (float)DESIGN_W;
+    float scaleH = (float)availH / (float)DESIGN_H;
+    float scale = scaleW < scaleH ? scaleW : scaleH;
+    if (scale <= 0.0f) scale = 1.0f;
 
-    UI_SCALE   = scale;
-    SCREEN_W   = DESIGN_W * scale;
-    SCREEN_H   = DESIGN_H * scale;
+    UI_SCALE = scale * kUiZoom;
+    SCREEN_W = ScalePx((float)DESIGN_W * UI_SCALE);
+    SCREEN_H = ScalePx((float)DESIGN_H * UI_SCALE);
 
     g_sidebarW = UiScale(272);
     const int marginL = UiScale(20);
@@ -1015,7 +1023,7 @@ void DrawWinBanner(int winner) {
                                     chopped.push_back(current[i]);
                                 }
                             }
-                            current = chopped;
+                             current = chopped;
                         }
                     }
                     word.clear();
@@ -1104,7 +1112,7 @@ static void CollectWinningCells(std::vector<std::pair<int,int>>& out) {
     }
 }
 
-void ShowWinScreenUntilDismiss(int winner) {
+void ShowWinScreen(int winner) {
     ExMessage msg;
 
     // Build winning cells (should be 5).
@@ -1168,8 +1176,9 @@ void ShowWinScreenUntilDismiss(int winner) {
         }
     }
 
-    // After all highlighted, show banner and wait for dismiss.
-    while (true) {
+    // After all highlighted, show banner and wait 2.5 seconds (or dismiss on input).
+    DWORD bannerStartTime = GetTickCount();
+    while (GetTickCount() - bannerStartTime < 2500) { // 2500ms = 2.5 seconds
         BeginBatchDraw();
         RenderGame();
         DrawWinningLine(winner);
@@ -1181,9 +1190,12 @@ void ShowWinScreenUntilDismiss(int winner) {
         FlushBatchDraw();
 
         if (!IsWindow(GetHWnd())) exit(0);
+        
+        // Vẫn cho phép người chơi bấm để bỏ qua (skip) 2.5 giây chờ nếu muốn
         while (peekmessage(&msg, EM_KEY | EM_MOUSE | EM_WINDOW)) {
             if (msg.message == WM_LBUTTONDOWN || msg.message == WM_KEYDOWN) return;
         }
         Sleep(16);
     }
+    // Hết 2.5s thì tự động thoát khỏi hàm, đi tới mục tiếp theo
 }

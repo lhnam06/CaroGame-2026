@@ -16,7 +16,7 @@ extern int OFFSET_X;
 extern int OFFSET_Y;
 extern int SCREEN_W;
 extern int SCREEN_H;
-extern int UI_SCALE;
+extern float UI_SCALE;
 
 #define CHAR_COUNT 23
 

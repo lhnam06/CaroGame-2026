@@ -1286,7 +1286,7 @@ int ShowPauseMenu(void) {
     }
 }
 
-// --- HÀM TẠO BẢNG HỎI YES/NO BẰNG GỖ ---
+// --- HÀM TẠO BẢNG HỎI YES/NO ---
 bool ShowConfirmDialog(const TCHAR* title, const TCHAR* message) {
     IMAGE bgCopy;
     getimage(&bgCopy, 0, 0, ScreenW(), ScreenH());
@@ -1297,6 +1297,9 @@ bool ShowConfirmDialog(const TCHAR* title, const TCHAR* message) {
     const int btnGap = S(36);
     int mx = 0, my = 0;
 
+    // Lọc sạch bộ đệm phím trước khi vào vòng lặp
+    while (peekmessage(&msg, EM_KEY | EM_MOUSE | EM_WINDOW)) {}
+
     while (true) {
         MenuRect box = CenterPanel(540, 240, 0);
         int btnRowW = btnW * 2 + btnGap;
@@ -1304,9 +1307,12 @@ bool ShowConfirmDialog(const TCHAR* title, const TCHAR* message) {
         int noX  = yesX + btnW + btnGap;
         int btnY = box.y + box.h - S(68);
 
-        if (peekmessage(&msg, EM_MOUSE | EM_WINDOW)) {
-            if (msg.message == WM_MOUSEMOVE) { mx = msg.x; my = msg.y; }
+        // Đã thêm EM_KEY để bắt được sự kiện bàn phím
+        if (peekmessage(&msg, EM_KEY | EM_MOUSE | EM_WINDOW)) {
             if (!IsWindow(GetHWnd())) exit(0);
+            
+            // Xử lý chuột
+            if (msg.message == WM_MOUSEMOVE) { mx = msg.x; my = msg.y; }
             if (msg.message == WM_LBUTTONDOWN) {
                 if (PointInRect(msg.x, msg.y, yesX, btnY, btnW, btnH)) {
                     PlayClickSound();
@@ -1316,6 +1322,17 @@ bool ShowConfirmDialog(const TCHAR* title, const TCHAR* message) {
                     PlayClickSound();
                     return false;
                 }
+            }
+
+            // Xử lý bàn phím (MỚI THÊM)
+            if (msg.message == WM_KEYDOWN) {
+                // Nếu nhấn Y
+                if (msg.vkcode == 'Y' || msg.vkcode == 'y') {
+                    PlayClickSound();
+                    return true;
+                }
+                PlayClickSound();
+                return false;
             }
         }
 

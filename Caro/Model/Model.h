@@ -6,6 +6,7 @@
 #define MODEL_H
 
 void ResetData(void);
+void ResetSessionStats(void);
 void GabageCollect(void);
 int TestBoard(void);
 int CheckBoard(int pX, int pY);
