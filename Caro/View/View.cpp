@@ -92,10 +92,14 @@ int GameFontPx(int designSize) {
 
 void ApplyGameFont(int height, int weight) {
     int px = GameFontPx(height);
-    if (g_pixelFontLoaded)
-        settextstyle(px, 0, _T("Press Start 2P"), 0, 0, weight, false, false, false);
-    else
-        settextstyle(px, 0, _T("Consolas"), 0, 0, weight, false, false, false);
+    if (g_pixelFontLoaded) {
+        int adjustedPx = (int)(px * 0.55); 
+        if (adjustedPx < 8) adjustedPx = 8; 
+        settextstyle(-adjustedPx, 0, _T("Press Start 2P"), 0, 0, weight, false, false, false);
+    }
+    else {
+        settextstyle(-px, 0, _T("Consolas"), 0, 0, weight, false, false, false);
+    }
 }
 
 void DrawPixelTextCentered(int x, int y, int w, int h, const TCHAR* text, COLORREF color, int designSize, bool shadow) {

@@ -1222,10 +1222,10 @@ int ShowMainMenu(void) {
                     ShowSettingsMenu();
                 }
                 if (hit == 3) {
-                    ShowInfoMenu(_T("ABOUT US"), _T("Game: Tic-Tac-Toe in C++"), _T("Developer: Nhom 18"), _T("Version: 1.0 - 2026"));
+                    ShowInfoMenu(_T("ABOUT US"), _T("CARO BY NHOM 18"), _T("Teacher: Truong Toan Thinh"), _T("24120211 24120291 24120346 24120354 24120385"));
                 }
                 if (hit == 4) {
-                    ShowInfoMenu(_T("RULES"), _T("- Get 5 in a row to win."), _T("- New Game: choose PVP or PVE."), _T("PVE: you are X, computer is O."));
+                    ShowInfoMenu(_T("RULES"), _T("- Match 5 in a row to win."),  _T("- Choose PVP or PVE mode."),  _T("- PVE: Player (X) vs CPU (O)"));
                 }
                 if (hit == 5) {
                     if (ShowConfirmDialog(_T("Exit Game"), _T("Are you sure you want to exit?")))
