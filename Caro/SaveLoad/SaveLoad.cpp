@@ -1,4 +1,4 @@
-﻿#include "Defs/Defs.h"
+#include "Defs/Defs.h"
 #include "View/View.h"
 #include "Model/Model.h"
 #include "Audio/Audio.h"
@@ -168,6 +168,14 @@ void LoadGame(void) {
         _CHAR_P1 = 1;
     if (!(ls >> _CHAR_P2))
         _CHAR_P2 = 2;
+
+    _UNDO_TOP = 0;
+    _MOVE_COUNT = _MOVE_P1 + _MOVE_P2;
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        for (int j = 0; j < BOARD_SIZE; j++) {
+            _MOVE_ORDER[i][j] = 0;
+        }
+    }
 
     std::string nextLine;
     int boardRow = 0;

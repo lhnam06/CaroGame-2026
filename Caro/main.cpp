@@ -1,4 +1,4 @@
-﻿/*
+/*
  * CaroGame - Do an Co So Lap Trinh
  * Truong Dai hoc Khoa hoc Tu nhien TP.HCM
  * C++ - Lap trinh thu tuc (khong su dung OOP)
@@ -29,6 +29,11 @@ static void RecordMove(int r, int c, int piece) {
     }
     _MOVE_COUNT++;
     _MOVE_ORDER[r][c] = _MOVE_COUNT;
+    if (piece == -1) {
+        _MOVE_P1++;
+    } else if (piece == 1) {
+        _MOVE_P2++;
+    }
 }
 
 /* ---------------------------------------------------------------
@@ -39,9 +44,15 @@ static bool PopMove(void) {
     _UNDO_TOP--;
     int r = _UNDO_STACK[_UNDO_TOP].r;
     int c = _UNDO_STACK[_UNDO_TOP].c;
+    int piece = _UNDO_STACK[_UNDO_TOP].piece;
     _MOVE_ORDER[r][c] = 0;
     _A[r][c].c = 0;
     _MOVE_COUNT--;
+    if (piece == -1) {
+        _MOVE_P1--;
+    } else if (piece == 1) {
+        _MOVE_P2--;
+    }
     return true;
 }
 
