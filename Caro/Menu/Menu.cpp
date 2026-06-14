@@ -139,6 +139,278 @@ static std::string FileMTimeShort(const fs::path& p) {
     return std::string(b);
 }
 
+struct PickerFileEntry {
+    std::string name;
+    fs::path path;
+};
+
+static std::vector<PickerFileEntry> CollectTxtFiles(void) {
+    std::vector<PickerFileEntry> files;
+    std::error_code ec;
+    for (const auto& entry : fs::directory_iterator(".", ec)) {
+        if (ec) break;
+        if (entry.path().extension() == ".txt") {
+            files.push_back({ entry.path().filename().string(), entry.path() });
+        }
+    }
+    return files;
+}
+
+static void EnsureTxtExtension(std::string& name) {
+    if (name.empty()) return;
+    if (name.length() < 4 || _stricmp(name.c_str() + name.length() - 4, ".txt") != 0) {
+        name += ".txt";
+    }
+}
+
+static bool IsAllowedFileNameChar(char c) {
+    return isalnum((unsigned char)c) || c == '_' || c == '-' || c == '.' || c == ' ';
+}
+
+static bool ShowFileNameInputUI(const TCHAR* title, const TCHAR* actionText, std::string& selectedName) {
+    std::string input = selectedName;
+    IMAGE* imgMenuBg = GetMenuBackground();
+    ExMessage msg;
+    int mx = 0, my = 0;
+
+    const int btnW = S(180);
+    const int btnH = S(58);
+    const int btnGap = S(28);
+
+    while (true) {
+        MenuRect panel = CenterPanel(600, 340, 0);
+        int fieldX = panel.x + S(56);
+        int fieldY = panel.y + S(128);
+        int fieldW = panel.w - S(112);
+        int fieldH = S(58);
+        int btnRowW = btnW * 2 + btnGap;
+        int okX = panel.x + (panel.w - btnRowW) / 2;
+        int backX = okX + btnW + btnGap;
+        int btnY = panel.y + panel.h - S(72);
+
+        if (peekmessage(&msg, EM_MOUSE | EM_KEY | EM_CHAR | EM_WINDOW)) {
+            if (msg.message == WM_MOUSEMOVE) {
+                mx = msg.x;
+                my = msg.y;
+            }
+            if (!IsWindow(GetHWnd())) exit(0);
+
+            if (msg.message == WM_LBUTTONDOWN) {
+                if (PointInRect(msg.x, msg.y, okX, btnY, btnW, btnH)) {
+                    if (!input.empty()) {
+                        selectedName = input;
+                        EnsureTxtExtension(selectedName);
+                        PlayClickSound();
+                        return true;
+                    }
+                }
+                if (PointInRect(msg.x, msg.y, backX, btnY, btnW, btnH)) {
+                    PlayClickSound();
+                    return false;
+                }
+            }
+            else if (msg.message == WM_KEYDOWN) {
+                if (msg.vkcode == VK_ESCAPE) {
+                    PlayClickSound();
+                    return false;
+                }
+                if (msg.vkcode == VK_BACK && !input.empty()) {
+                    input.pop_back();
+                }
+                if (msg.vkcode == VK_RETURN) {
+                    if (!input.empty()) {
+                        selectedName = input;
+                        EnsureTxtExtension(selectedName);
+                        PlayClickSound();
+                        return true;
+                    }
+                }
+            }
+            else if (msg.message == WM_CHAR) {
+                char c = (char)msg.ch;
+                if (IsAllowedFileNameChar(c) && input.length() < 60) {
+                    input += c;
+                }
+            }
+        }
+
+        BeginBatchDraw();
+        putimage(0, 0, imgMenuBg);
+        DrawMenuPanel(panel);
+        DrawTitleCentered(panel.y + S(28), title, WHITE, 18);
+        DrawTextCenteredIn(panel.x, panel.w, panel.y + S(82), _T("Enter a file name to save"), RGB(255, 220, 180), 13);
+
+        setfillcolor(RGB(44, 50, 70));
+        fillroundrect(fieldX, fieldY, fieldX + fieldW, fieldY + fieldH, S(10), S(10));
+        setlinecolor(RGB(255, 210, 80));
+        setlinestyle(PS_SOLID, S(2));
+        roundrect(fieldX, fieldY, fieldX + fieldW, fieldY + fieldH, S(10), S(10));
+
+        TCHAR shown[128];
+        if (input.empty()) {
+            _tcscpy_s(shown, 128, _T("Type file name here..."));
+            DrawTextWithShadow(fieldX + S(14), fieldY + S(18), shown, RGB(160, 168, 190), 12);
+        } else {
+            _stprintf_s(shown, 128, _T("%hs"), input.c_str());
+            DrawTextWithShadow(fieldX + S(14), fieldY + S(18), shown, WHITE, 12);
+        }
+
+        DrawTextWithShadow(fieldX + S(12), fieldY + fieldH + S(12), _T(".txt will be added automatically"), RGB(255, 200, 100), 10);
+        DrawWoodenButton(okX, btnY, btnW, btnH, actionText,
+            PointInRect(mx, my, okX, btnY, btnW, btnH));
+        DrawWoodenButton(backX, btnY, btnW, btnH, _T("BACK"),
+            PointInRect(mx, my, backX, btnY, btnW, btnH));
+
+        FlushBatchDraw();
+        Sleep(1);
+    }
+}
+
+static bool ShowFilePickerUI(const TCHAR* title, const TCHAR* actionText, bool allowFreeName, std::string& selectedName) {
+    std::vector<PickerFileEntry> allFiles = CollectTxtFiles();
+    std::string query = selectedName;
+    int selectedIndex = 0;
+    IMAGE* imgMenuBg = GetMenuBackground();
+    ExMessage msg;
+
+    const int btnW = S(180);
+    const int btnH = S(58);
+    const int btnGap = S(28);
+    int mx = 0, my = 0;
+
+    while (true) {
+        std::vector<PickerFileEntry> filteredFiles;
+        for (const auto& f : allFiles) {
+            if (query.empty() || f.name.find(query) != std::string::npos) {
+                filteredFiles.push_back(f);
+            }
+        }
+
+        if (selectedIndex >= (int)filteredFiles.size()) selectedIndex = max(0, (int)filteredFiles.size() - 1);
+        if (selectedIndex < 0) selectedIndex = 0;
+
+        MenuRect panel = CenterPanel(760, 560, 0);
+        int innerX = panel.x + S(24);
+        int innerW = panel.w - S(48);
+        int listW  = innerW * 58 / 100;
+        int searchX = innerX + listW + S(16);
+        int searchW = innerW - listW - S(16);
+        int contentY = panel.y + S(76);
+        int btnRowW = btnW * 2 + btnGap;
+        int actionX = panel.x + (panel.w - btnRowW) / 2;
+        int backX = actionX + btnW + btnGap;
+        int btnY  = panel.y + panel.h - S(68);
+
+        BeginBatchDraw();
+        putimage(0, 0, imgMenuBg);
+        DrawMenuPanel(panel);
+        DrawTitleCentered(panel.y + S(26), title, WHITE, 18);
+
+        setfillcolor(RGB(44, 50, 70));
+        fillroundrect(searchX, contentY, searchX + searchW, contentY + S(72), S(10), S(10));
+        DrawTextWithShadow(searchX + S(12), contentY + S(12), allowFreeName ? _T("Filename:") : _T("Search:"), RGB(200, 200, 200), 12);
+        TCHAR tQuery[256];
+        _stprintf_s(tQuery, 256, _T("%hs"), query.c_str());
+        DrawTextWithShadow(searchX + S(12), contentY + S(36), tQuery, WHITE, 12);
+        DrawTextWithShadow(searchX + S(12), contentY + S(58), allowFreeName ? _T("(Type a name or pick an existing file)") : _T("(Type on keyboard)"), RGB(255, 200, 100), 10);
+
+        int listY = contentY;
+        if (filteredFiles.empty()) {
+            DrawTextWithShadow(innerX + S(12), listY, _T("No files found."), RGB(200, 200, 200), 12);
+        } else {
+            for (int i = 0; i < (int)filteredFiles.size() && i < 8; i++) {
+                std::string line = filteredFiles[i].name + "  |  " + FileMTimeShort(filteredFiles[i].path);
+                if (line.size() > 54) line = line.substr(0, 51) + "...";
+                TCHAR tFile[320];
+                _stprintf_s(tFile, _T("%hs"), line.c_str());
+                if (i == selectedIndex) {
+                    setfillcolor(RGB(65, 85, 140));
+                    fillroundrect(innerX, listY - S(4), innerX + listW, listY + S(30), S(5), S(5));
+                }
+                DrawTextWithShadow(innerX + S(12), listY, tFile, WHITE, 11);
+                listY += S(36);
+            }
+        }
+
+        DrawWoodenButton(actionX, btnY, btnW, btnH, actionText,
+            PointInRect(mx, my, actionX, btnY, btnW, btnH));
+        DrawWoodenButton(backX, btnY, btnW, btnH, _T("BACK"),
+            PointInRect(mx, my, backX, btnY, btnW, btnH));
+
+        FlushBatchDraw();
+        if (!IsWindow(GetHWnd())) exit(0);
+
+        while (peekmessage(&msg, EM_MOUSE | EM_KEY | EM_CHAR | EM_WINDOW)) {
+            if (msg.message == WM_MOUSEMOVE) {
+                mx = msg.x;
+                my = msg.y;
+            }
+            if (msg.message == WM_LBUTTONDOWN) {
+                int clickX = msg.x;
+                int clickY = msg.y;
+                if (PointInRect(clickX, clickY, backX, btnY, btnW, btnH)) {
+                    PlayClickSound();
+                    return false;
+                }
+                if (PointInRect(clickX, clickY, actionX, btnY, btnW, btnH)) {
+                    if (allowFreeName) {
+                        if (!query.empty()) {
+                            selectedName = query;
+                            EnsureTxtExtension(selectedName);
+                            return true;
+                        }
+                        if (!filteredFiles.empty()) {
+                            selectedName = filteredFiles[selectedIndex].name;
+                            EnsureTxtExtension(selectedName);
+                            return true;
+                        }
+                    } else if (!filteredFiles.empty()) {
+                        selectedName = filteredFiles[selectedIndex].name;
+                        return true;
+                    }
+                }
+                if (clickX >= innerX && clickX <= innerX + listW && clickY >= contentY - S(4) && clickY <= contentY + S(8 * 36)) {
+                    int clickedIdx = (clickY - contentY) / S(36);
+                    if (clickedIdx >= 0 && clickedIdx < (int)filteredFiles.size()) {
+                        selectedIndex = clickedIdx;
+                        if (allowFreeName) query = filteredFiles[selectedIndex].name;
+                    }
+                }
+            }
+            else if (msg.message == WM_KEYDOWN) {
+                if (msg.vkcode == VK_UP) selectedIndex = max(0, selectedIndex - 1);
+                if (msg.vkcode == VK_DOWN) selectedIndex = min((int)filteredFiles.size() - 1, selectedIndex + 1);
+                if (msg.vkcode == VK_BACK && !query.empty()) query.pop_back();
+                if (msg.vkcode == VK_RETURN) {
+                    if (allowFreeName) {
+                        if (!query.empty()) {
+                            selectedName = query;
+                            EnsureTxtExtension(selectedName);
+                            return true;
+                        }
+                        if (!filteredFiles.empty()) {
+                            selectedName = filteredFiles[selectedIndex].name;
+                            EnsureTxtExtension(selectedName);
+                            return true;
+                        }
+                    } else if (!filteredFiles.empty()) {
+                        selectedName = filteredFiles[selectedIndex].name;
+                        return true;
+                    }
+                }
+            }
+            else if (msg.message == WM_CHAR) {
+                char c = (char)msg.ch;
+                if (isalnum((unsigned char)c) || c == '_' || c == '-' || c == '.' || c == ' ') {
+                    query += c;
+                    if (allowFreeName) selectedIndex = 0;
+                }
+            }
+        }
+        Sleep(1);
+    }
+}
+
 void DrawTextWithShadow(int x, int y, const TCHAR* text, COLORREF textColor, int fontSize) {
     setbkmode(TRANSPARENT);
     ApplyGameFont(fontSize, FW_BOLD);
@@ -196,122 +468,17 @@ void ShowInfoMenu(const TCHAR* title, const TCHAR* line1, const TCHAR* line2, co
 }
 
 bool ShowLoadMenuUI() {
-    struct LoadFileEntry {
-        std::string name;
-        fs::path path;
-    };
-    std::vector<LoadFileEntry> allFiles;
-    for (const auto& entry : fs::directory_iterator(".")) {
-        if (entry.path().extension() == ".txt") {
-            allFiles.push_back({ entry.path().filename().string(), entry.path() });
-        }
-    }
+    std::string picked = "";
+    if (!ShowFilePickerUI(_T("LOAD GAME"), _T("LOAD"), false, picked)) return false;
+    _SELECTED_FILE = picked;
+    return true;
+}
 
-    std::string searchQuery = "";
-    int selectedIndex = 0;
-    IMAGE* imgMenuBg = GetMenuBackground();
-    ExMessage msg;
-
-    const int btnW = S(180);
-    const int btnH = S(58);
-    const int btnGap = S(28);
-    int mx = 0, my = 0;
-
-    while (true) {
-        std::vector<LoadFileEntry> filteredFiles;
-        for (const auto& f : allFiles) {
-            if (searchQuery.empty() || f.name.find(searchQuery) != std::string::npos) {
-                filteredFiles.push_back(f);
-            }
-        }
-        if (selectedIndex >= (int)filteredFiles.size()) selectedIndex = max(0, (int)filteredFiles.size() - 1);
-
-        MenuRect panel = CenterPanel(760, 560, 0);
-        int innerX = panel.x + S(24);
-        int innerW = panel.w - S(48);
-        int listW  = innerW * 58 / 100;
-        int searchX = innerX + listW + S(16);
-        int searchW = innerW - listW - S(16);
-        int contentY = panel.y + S(76);
-        int btnRowW = btnW * 2 + btnGap;
-        int loadX = panel.x + (panel.w - btnRowW) / 2;
-        int backX = loadX + btnW + btnGap;
-        int btnY  = panel.y + panel.h - S(68);
-
-        BeginBatchDraw();
-        putimage(0, 0, imgMenuBg);
-        DrawMenuPanel(panel);
-        DrawTitleCentered(panel.y + S(26), _T("LOAD GAME"), WHITE, 18);
-
-        setfillcolor(RGB(44, 50, 70));
-        fillroundrect(searchX, contentY, searchX + searchW, contentY + S(72), S(10), S(10));
-        DrawTextWithShadow(searchX + S(12), contentY + S(12), _T("Search:"), RGB(200, 200, 200), 12);
-        TCHAR tSearch[256];
-        _stprintf_s(tSearch, 256, _T("%hs"), searchQuery.c_str());
-        DrawTextWithShadow(searchX + S(12), contentY + S(36), tSearch, WHITE, 12);
-        DrawTextWithShadow(searchX + S(12), contentY + S(58), _T("(Type on keyboard)"), RGB(255, 200, 100), 10);
-
-        int listY = contentY;
-        if (filteredFiles.empty()) {
-            DrawTextWithShadow(innerX + S(12), listY, _T("No files found."), RGB(200, 200, 200), 12);
-        } else {
-            for (int i = 0; i < (int)filteredFiles.size() && i < 8; i++) {
-                std::string line = filteredFiles[i].name + "  |  " + FileMTimeShort(filteredFiles[i].path);
-                if (line.size() > 54) line = line.substr(0, 51) + "...";
-                TCHAR tFile[320];
-                _stprintf_s(tFile, _T("%hs"), line.c_str());
-                if (i == selectedIndex) {
-                    setfillcolor(RGB(65, 85, 140));
-                    fillroundrect(innerX, listY - S(4), innerX + listW, listY + S(30), S(5), S(5));
-                }
-                DrawTextWithShadow(innerX + S(12), listY, tFile, WHITE, 11);
-                listY += S(36);
-            }
-        }
-
-        DrawWoodenButton(loadX, btnY, btnW, btnH, _T("LOAD"),
-            PointInRect(mx, my, loadX, btnY, btnW, btnH));
-        DrawWoodenButton(backX, btnY, btnW, btnH, _T("BACK"),
-            PointInRect(mx, my, backX, btnY, btnW, btnH));
-
-        FlushBatchDraw();
-        if (!IsWindow(GetHWnd())) exit(0);
-
-        while (peekmessage(&msg, EM_MOUSE | EM_KEY | EM_CHAR | EM_WINDOW)) {
-            if (msg.message == WM_MOUSEMOVE) { mx = msg.x; my = msg.y; }
-            if (msg.message == WM_LBUTTONDOWN) {
-                int mx = msg.x, my = msg.y;
-                if (PointInRect(mx, my, backX, btnY, btnW, btnH)) {
-                    PlayClickSound();
-                    return false;
-                }
-                if (PointInRect(mx, my, loadX, btnY, btnW, btnH)) {
-                    if (!filteredFiles.empty()) {
-                        _SELECTED_FILE = filteredFiles[selectedIndex].name;
-                        return true;
-                    }
-                }
-                if (mx >= innerX && mx <= innerX + listW && my >= contentY - S(4) && my <= contentY + S(8 * 36)) {
-                    int clickedIdx = (my - contentY) / S(36);
-                    if (clickedIdx >= 0 && clickedIdx < (int)filteredFiles.size()) selectedIndex = clickedIdx;
-                }
-            }
-            else if (msg.message == WM_KEYDOWN) {
-                if (msg.vkcode == VK_UP) selectedIndex = max(0, selectedIndex - 1);
-                if (msg.vkcode == VK_DOWN) selectedIndex = min((int)filteredFiles.size() - 1, selectedIndex + 1);
-                if (msg.vkcode == VK_BACK && !searchQuery.empty()) searchQuery.pop_back();
-                if (msg.vkcode == VK_RETURN && !filteredFiles.empty()) {
-                    _SELECTED_FILE = filteredFiles[selectedIndex].name;
-                    return true;
-                }
-            }
-            else if (msg.message == WM_CHAR) {
-                char c = msg.ch;
-                if (isalnum(c) || c == '_' || c == '-' || c == '.') searchQuery += c;
-            }
-        }
-        Sleep(1);
-    }
+bool ShowSaveMenuUI() {
+    std::string picked;
+    if (!ShowFileNameInputUI(_T("SAVE GAME"), _T("SAVE"), picked)) return false;
+    _SELECTED_FILE = picked;
+    return true;
 }
 
 static const TCHAR* ThemeName(int t) {
@@ -1055,10 +1222,10 @@ int ShowMainMenu(void) {
                     ShowSettingsMenu();
                 }
                 if (hit == 3) {
-                    ShowInfoMenu(_T("ABOUT US"), _T("Game: Tic-Tac-Toe in C++"), _T("Developer: Nhom 18"), _T("Version: 1.0 - 2026"));
+                    ShowInfoMenu(_T("ABOUT US"), _T("CARO BY NHOM 18"), _T("Teacher: Truong Toan Thinh"), _T("24120211 24120291 24120346 24120354 24120385"));
                 }
                 if (hit == 4) {
-                    ShowInfoMenu(_T("RULES"), _T("- Get 5 in a row to win."), _T("- New Game: choose PVP or PVE."), _T("PVE: you are X, computer is O."));
+                    ShowInfoMenu(_T("RULES"), _T("- Match 5 in a row to win."),  _T("- Choose PVP or PVE mode."),  _T("- PVE: Player (X) vs CPU (O)"));
                 }
                 if (hit == 5) {
                     if (ShowConfirmDialog(_T("Exit Game"), _T("Are you sure you want to exit?")))
@@ -1119,7 +1286,7 @@ int ShowPauseMenu(void) {
     }
 }
 
-// --- HÀM TẠO BẢNG HỎI YES/NO BẰNG GỖ ---
+// --- HÀM TẠO BẢNG HỎI YES/NO ---
 bool ShowConfirmDialog(const TCHAR* title, const TCHAR* message) {
     IMAGE bgCopy;
     getimage(&bgCopy, 0, 0, ScreenW(), ScreenH());
@@ -1130,6 +1297,9 @@ bool ShowConfirmDialog(const TCHAR* title, const TCHAR* message) {
     const int btnGap = S(36);
     int mx = 0, my = 0;
 
+    // Lọc sạch bộ đệm phím trước khi vào vòng lặp
+    while (peekmessage(&msg, EM_KEY | EM_MOUSE | EM_WINDOW)) {}
+
     while (true) {
         MenuRect box = CenterPanel(540, 240, 0);
         int btnRowW = btnW * 2 + btnGap;
@@ -1137,9 +1307,12 @@ bool ShowConfirmDialog(const TCHAR* title, const TCHAR* message) {
         int noX  = yesX + btnW + btnGap;
         int btnY = box.y + box.h - S(68);
 
-        if (peekmessage(&msg, EM_MOUSE | EM_WINDOW)) {
-            if (msg.message == WM_MOUSEMOVE) { mx = msg.x; my = msg.y; }
+        // Đã thêm EM_KEY để bắt được sự kiện bàn phím
+        if (peekmessage(&msg, EM_KEY | EM_MOUSE | EM_WINDOW)) {
             if (!IsWindow(GetHWnd())) exit(0);
+            
+            // Xử lý chuột
+            if (msg.message == WM_MOUSEMOVE) { mx = msg.x; my = msg.y; }
             if (msg.message == WM_LBUTTONDOWN) {
                 if (PointInRect(msg.x, msg.y, yesX, btnY, btnW, btnH)) {
                     PlayClickSound();
@@ -1149,6 +1322,17 @@ bool ShowConfirmDialog(const TCHAR* title, const TCHAR* message) {
                     PlayClickSound();
                     return false;
                 }
+            }
+
+            // Xử lý bàn phím (MỚI THÊM)
+            if (msg.message == WM_KEYDOWN) {
+                // Nếu nhấn Y
+                if (msg.vkcode == 'Y' || msg.vkcode == 'y') {
+                    PlayClickSound();
+                    return true;
+                }
+                PlayClickSound();
+                return false;
             }
         }
 
@@ -1169,7 +1353,7 @@ bool ShowConfirmDialog(const TCHAR* title, const TCHAR* message) {
 }
 
 // --- HÀM TẠO BẢNG THÔNG BÁO (CHỈ CÓ NÚT OK) BẰNG GỖ ---
-void ShowNotifyDialog(const TCHAR* title, const TCHAR* message) {
+void ShowNotifyDialog(const TCHAR* title, const TCHAR* message, DWORD autoCloseMs) {
     IMAGE bgCopy;
     getimage(&bgCopy, 0, 0, ScreenW(), ScreenH());
 
@@ -1177,16 +1361,21 @@ void ShowNotifyDialog(const TCHAR* title, const TCHAR* message) {
     const int btnW = S(200);
     const int btnH = S(58);
     int mx = 0, my = 0;
+    DWORD startTick = GetTickCount();
 
     while (true) {
         MenuRect box = CenterPanel(540, 240, 0);
         int btnX = box.x + (box.w - btnW) / 2;
         int btnY = box.y + box.h - S(68);
 
+        if (autoCloseMs > 0 && GetTickCount() - startTick >= autoCloseMs) {
+            return;
+        }
+
         if (peekmessage(&msg, EM_MOUSE | EM_WINDOW)) {
             if (msg.message == WM_MOUSEMOVE) { mx = msg.x; my = msg.y; }
             if (!IsWindow(GetHWnd())) exit(0);
-            if (msg.message == WM_LBUTTONDOWN) {
+            if (autoCloseMs == 0 && msg.message == WM_LBUTTONDOWN) {
                 if (PointInRect(msg.x, msg.y, btnX, btnY, btnW, btnH)) {
                     PlayClickSound();
                     return;
@@ -1199,8 +1388,10 @@ void ShowNotifyDialog(const TCHAR* title, const TCHAR* message) {
         DrawMenuPanel(box);
         DrawTextCenteredIn(box.x, box.w, box.y + S(28), title, RGB(255, 200, 100), 16);
         DrawTextCenteredIn(box.x, box.w, box.y + S(78), message, WHITE, 12);
-        DrawWoodenButton(btnX, btnY, btnW, btnH, _T("OK"),
-            PointInRect(mx, my, btnX, btnY, btnW, btnH));
+        if (autoCloseMs == 0) {
+            DrawWoodenButton(btnX, btnY, btnW, btnH, _T("OK"),
+                PointInRect(mx, my, btnX, btnY, btnW, btnH));
+        }
 
         FlushBatchDraw();
         Sleep(1);

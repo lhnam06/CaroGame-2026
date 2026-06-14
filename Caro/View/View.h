@@ -30,7 +30,7 @@ void RenderGame(void);
 void DrawPlayerInfo(void);
 void DrawWinningLine(int winner);
 void DrawWinBanner(int winner);
-void ShowWinScreenUntilDismiss(int winner);
+void ShowWinScreen(int winner);
 void ReloadBoardAssets(void);
 void GetUndoButtonRect(int* outX, int* outY, int* outW, int* outH);
 

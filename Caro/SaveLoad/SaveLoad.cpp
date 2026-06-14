@@ -1,7 +1,8 @@
-﻿#include "Defs/Defs.h"
+#include "Defs/Defs.h"
 #include "View/View.h"
 #include "Model/Model.h"
 #include "Audio/Audio.h"
+#include "Menu/Menu.h"
 #include "SaveLoad/SaveLoad.h"
 #include <fstream>
 #include <graphics.h>
@@ -95,21 +96,19 @@ static void NowShort(TCHAR* buf, size_t n) {
 }
 
 void SaveGame(void) {
-    TCHAR filename[256];
-
-    InputBox(filename, 256, _T("Enter filename to save:"), _T("Save Game"));
-
-    if (_tcslen(filename) == 0) return;
-
-    std::basic_string<TCHAR> tFilename(filename);
-
-    if (tFilename.length() < 4 || tFilename.substr(tFilename.length() - 4) != _T(".txt")) {
-        tFilename += _T(".txt");
+    if (_SELECTED_FILE.empty()) {
+        ShowNotifyDialog(_T("SAVE GAME"), _T("Please choose a file first."));
+        return;
     }
 
-    std::ofstream f(tFilename.c_str());
+    std::string savePath = _SELECTED_FILE;
+    if (savePath.length() < 4 || _stricmp(savePath.c_str() + savePath.length() - 4, ".txt") != 0) {
+        savePath += ".txt";
+    }
+
+    std::ofstream f(savePath.c_str());
     if (!f) {
-        MessageBox(GetHWnd(), _T("Cannot create file!"), _T("Error"), MB_OK | MB_ICONERROR);
+        ShowNotifyDialog(_T("SAVE GAME"), _T("Cannot create file!"));
         return;
     }
 
@@ -137,7 +136,7 @@ void SaveGame(void) {
     f.close();
 
     PlaySaveSound();
-    MessageBox(GetHWnd(), _T("Game saved successfully!"), _T("Notification"), MB_OK | MB_ICONINFORMATION);
+    ShowNotifyDialog(_T("SAVE GAME"), _T("Saved successfully!"));
 }
 
 void LoadGame(void) {
@@ -149,14 +148,14 @@ void LoadGame(void) {
 
     std::ifstream f(_SELECTED_FILE);
     if (!f) {
-        MessageBox(GetHWnd(), _T("Cannot find file!"), _T("Error"), MB_OK | MB_ICONERROR);
+        ShowNotifyDialog(_T("LOAD GAME"), _T("Cannot find file!"));
         _SELECTED_FILE = "";
         return;
     }
 
     std::string line;
     if (!std::getline(f, line)) {
-        MessageBox(GetHWnd(), _T("Cannot read file!"), _T("Error"), MB_OK | MB_ICONERROR);
+        ShowNotifyDialog(_T("LOAD GAME"), _T("Cannot read file!"));
         _SELECTED_FILE = "";
         return;
     }
@@ -170,6 +169,14 @@ void LoadGame(void) {
     if (!(ls >> _CHAR_P2))
         _CHAR_P2 = 2;
 
+    _UNDO_TOP = 0;
+    _MOVE_COUNT = _MOVE_P1 + _MOVE_P2;
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        for (int j = 0; j < BOARD_SIZE; j++) {
+            _MOVE_ORDER[i][j] = 0;
+        }
+    }
+
     std::string nextLine;
     int boardRow = 0;
     if (std::getline(f, nextLine)) {
@@ -182,7 +189,7 @@ void LoadGame(void) {
             boardRow = 0;
         } else {
             if (!ParseBoardRow(nextLine, 0, &f)) {
-                MessageBox(GetHWnd(), _T("Cannot read file!"), _T("Error"), MB_OK | MB_ICONERROR);
+                ShowNotifyDialog(_T("LOAD GAME"), _T("Cannot read file!"));
                 _SELECTED_FILE = "";
                 return;
             }
@@ -218,17 +225,9 @@ void LoadGame(void) {
 
     _SELECTED_FILE = "";
 
-    TCHAR loadNow[64];
-    NowShort(loadNow, 64);
-
-    TCHAR msg[768];
     if (!savedInFile.empty()) {
-        _stprintf_s(msg, _T("Game loaded successfully!\n\nFile modified: %s\nSaved (in file): %s\nLoaded at: %s"),
-            fileMTime, savedInFile.c_str(), loadNow);
+        ShowNotifyDialog(_T("LOAD GAME"), _T("File selected and loaded successfully!"), 1000);
     } else {
-        _stprintf_s(msg, _T("Game loaded successfully!\n\nFile modified: %s\nLoaded at: %s"),
-            fileMTime, loadNow);
+        ShowNotifyDialog(_T("LOAD GAME"), _T("Loaded successfully!"), 1000);
     }
-
-    MessageBox(GetHWnd(), msg, _T("Notification"), MB_OK | MB_ICONINFORMATION);
 }

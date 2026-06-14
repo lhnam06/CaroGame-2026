@@ -26,6 +26,13 @@ void ResetData(void) {
             _MOVE_ORDER[i][j] = 0;
 }
 
+void ResetSessionStats(void) {
+    _WIN_P1 = 0;
+    _WIN_P2 = 0;
+    _MOVE_P1 = 0;
+    _MOVE_P2 = 0;
+}
+
 void GabageCollect(void) {
 }
 

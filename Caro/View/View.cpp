@@ -16,8 +16,7 @@ IMAGE imgX;
 IMAGE imgO;
 IMAGE imgAvatarP1;
 IMAGE imgAvatarP2;
-IMAGE imgPlayer1Win;
-IMAGE imgPlayer2Win;
+IMAGE imgWinnerFrame;
 
 static HDC g_hdcScreen = NULL;
 static HDC g_hdcAv1    = NULL;
@@ -25,8 +24,7 @@ static HDC g_hdcAv2    = NULL;
 
 static bool g_hasAvatar1     = false;
 static bool g_hasAvatar2     = false;
-static bool g_hasPlayer1Win  = false;
-static bool g_hasPlayer2Win  = false;
+static bool g_hasWinnerFrame = false;
 static int  g_infoPanelW     = 0;
 static int  g_infoPanelH     = 0;
 static int  g_infoPanelX     = 0;
@@ -40,6 +38,8 @@ static int  g_undoY          = 0;
 static bool g_hasPngX        = false;
 static bool g_hasPngO        = false;
 static bool g_pixelFontLoaded = false;
+
+static constexpr float kUiZoom = 0.9f;
 
 static IMAGE imgCellLight[3];
 static IMAGE imgCellDark[3];
@@ -69,8 +69,14 @@ static const TCHAR* kPixelFontPath = _T("fonts\\PressStart2P-Regular.ttf");
 
 static int AvatarSize(void) { return UiScale(36); }
 
+static int ScalePx(float px) {
+    int value = (int)px;
+    if (value < 1) value = 1;
+    return value;
+}
+
 int UiScale(int designPx) {
-    return (designPx * UI_SCALE);
+    return ScalePx((float)designPx * UI_SCALE);
 }
 
 int ScreenW(void) { return SCREEN_W; }
@@ -79,17 +85,21 @@ int ScreenH(void) { return SCREEN_H; }
 bool IsGameFontLoaded(void) { return g_pixelFontLoaded; }
 
 int GameFontPx(int designSize) {
-    int px = designSize * UI_SCALE;
+    int px = UiScale(designSize);
     if (px < 10) px = 10;
     return px;
 }
 
 void ApplyGameFont(int height, int weight) {
     int px = GameFontPx(height);
-    if (g_pixelFontLoaded)
-        settextstyle(px, 0, _T("Press Start 2P"), 0, 0, weight, false, false, false);
-    else
-        settextstyle(px, 0, _T("Consolas"), 0, 0, weight, false, false, false);
+    if (g_pixelFontLoaded) {
+        int adjustedPx = (int)(px * 0.55); 
+        if (adjustedPx < 8) adjustedPx = 8; 
+        settextstyle(-adjustedPx, 0, _T("Press Start 2P"), 0, 0, weight, false, false, false);
+    }
+    else {
+        settextstyle(-px, 0, _T("Consolas"), 0, 0, weight, false, false, false);
+    }
 }
 
 void DrawPixelTextCentered(int x, int y, int w, int h, const TCHAR* text, COLORREF color, int designSize, bool shadow) {
@@ -159,14 +169,14 @@ static void SetupScreenLayout(void) {
     int availW = work.right - work.left;
     int availH = work.bottom - work.top;
 
-    int scaleW = availW / DESIGN_W;
-    int scaleH = availH / DESIGN_H;
-    int scale = scaleW < scaleH ? scaleW : scaleH;
-    if (scale < 1) scale = 1;
+    float scaleW = (float)availW / (float)DESIGN_W;
+    float scaleH = (float)availH / (float)DESIGN_H;
+    float scale = scaleW < scaleH ? scaleW : scaleH;
+    if (scale <= 0.0f) scale = 1.0f;
 
-    UI_SCALE   = scale;
-    SCREEN_W   = DESIGN_W * scale;
-    SCREEN_H   = DESIGN_H * scale;
+    UI_SCALE = scale * kUiZoom;
+    SCREEN_W = ScalePx((float)DESIGN_W * UI_SCALE);
+    SCREEN_H = ScalePx((float)DESIGN_H * UI_SCALE);
 
     g_sidebarW = UiScale(272);
     const int marginL = UiScale(20);
@@ -672,13 +682,9 @@ void InitSystem(void) {
     LoadBoardAssets();
     ReloadAvatars();
 
-    if (FileExists(_T("GUI\\khungvaHienThiNguoiWin\\player1Win.jpg"))) {
-        loadimage(&imgPlayer1Win, _T("GUI\\khungvaHienThiNguoiWin\\player1Win.jpg"), UiScale(380), UiScale(477));
-        g_hasPlayer1Win = true;
-    }
-    if (FileExists(_T("GUI\\khungvaHienThiNguoiWin\\player2Win.jpg"))) {
-        loadimage(&imgPlayer2Win, _T("GUI\\khungvaHienThiNguoiWin\\player2Win.jpg"), UiScale(380), UiScale(480));
-        g_hasPlayer2Win = true;
+    if (FileExists(_T("GUI\\khungvaHienThiNguoiWin\\playerWin.png"))) {
+        loadimage(&imgWinnerFrame, _T("GUI\\khungvaHienThiNguoiWin\\playerWin.png"), UiScale(640), UiScale(640));
+        g_hasWinnerFrame = true;
     }
 }
 
@@ -925,33 +931,275 @@ void DrawWinningLine(int winner) {
 }
 
 void DrawWinBanner(int winner) {
-    IMAGE* img = NULL;
-    if (winner == -1 && g_hasPlayer1Win)      img = &imgPlayer1Win;
-    else if (winner == 1 && g_hasPlayer2Win)  img = &imgPlayer2Win;
-    if (!img) return;
+    if (!g_hasWinnerFrame || imgWinnerFrame.getwidth() <= 0 || imgWinnerFrame.getheight() <= 0) return;
 
-    int bw = img->getwidth();
-    int bh = img->getheight();
-    int boardW = BOARD_SIZE * CELL_SIZE;
-    int boardH = BOARD_SIZE * CELL_SIZE;
-    int bx = OFFSET_X + (boardW - bw) / 2;
-    int by = OFFSET_Y + (boardH - bh) / 2;
-    putimage(bx, by, img);
+    int bw = imgWinnerFrame.getwidth();
+    int bh = imgWinnerFrame.getheight();
+    int bx = (ScreenW() - bw) / 2;
+    int by = (ScreenH() - bh) / 2;
+    putimage(bx, by, &imgWinnerFrame);
+
+    const TCHAR* winnerName = (winner == -1) ? _NAME_P1 : _NAME_P2;
+    if (!winnerName || !winnerName[0]) {
+        winnerName = (winner == -1) ? _T("Player 1") : _T("Player 2");
+    }
+
+    auto ApplyChampionFont = [&](int fontSize) {
+        ApplyGameFont(fontSize, FW_BOLD);
+    };
+
+    auto DrawTightTextLine = [&](const std::basic_string<TCHAR>& line, int x, int y, COLORREF color, int spacingAdjustPx) {
+        ApplyChampionFont(32);
+        setbkmode(TRANSPARENT);
+        settextcolor(RGB(18, 20, 32));
+
+        int totalW = 0;
+        for (size_t i = 0; i < line.size(); ++i) {
+            TCHAR ch[2] = { line[i], 0 };
+            totalW += textwidth(ch);
+            if (i + 1 < line.size()) totalW += spacingAdjustPx;
+        }
+
+        int curX = x - totalW / 2;
+        for (size_t i = 0; i < line.size(); ++i) {
+            TCHAR ch[2] = { line[i], 0 };
+            int cw = textwidth(ch);
+            outtextxy(curX + UiScale(2), y + UiScale(2), ch);
+            curX += cw;
+            if (i + 1 < line.size()) curX += spacingAdjustPx;
+        }
+
+        curX = x - totalW / 2;
+        settextcolor(color);
+        for (size_t i = 0; i < line.size(); ++i) {
+            TCHAR ch[2] = { line[i], 0 };
+            int cw = textwidth(ch);
+            outtextxy(curX, y, ch);
+            curX += cw;
+            if (i + 1 < line.size()) curX += spacingAdjustPx;
+        }
+    };
+
+    TCHAR championText[128];
+    _stprintf_s(championText, _T("%s is champion"), winnerName);
+
+    auto drawCenteredLine = [&](const TCHAR* text, int cx, int y, COLORREF color, int fontSize) {
+        ApplyChampionFont(fontSize);
+        setbkmode(TRANSPARENT);
+        int tw = textwidth(text);
+        settextcolor(RGB(18, 20, 32));
+        outtextxy(cx - tw / 2 + UiScale(2), y + UiScale(2), text);
+        settextcolor(color);
+        outtextxy(cx - tw / 2, y, text);
+    };
+
+    auto wrapAndDraw = [&](const TCHAR* text, int x, int y, int w, int h, int fontSize, COLORREF color) {
+        auto buildLines = [&](std::vector<std::basic_string<TCHAR>>& lines) {
+            lines.clear();
+            std::basic_string<TCHAR> current;
+            std::basic_string<TCHAR> word;
+            for (const TCHAR* p = text; ; ++p) {
+                TCHAR ch = *p;
+                bool atEnd = (ch == 0);
+                if (!atEnd && ch != _T(' ')) {
+                    word.push_back(ch);
+                    continue;
+                }
+
+                if (!word.empty()) {
+                    std::basic_string<TCHAR> candidate = current;
+                    if (!candidate.empty()) candidate += _T(' ');
+                    candidate += word;
+
+                    if (current.empty() || textwidth(candidate.c_str()) <= w) {
+                        current = candidate;
+                    } else {
+                        if (!current.empty()) lines.push_back(current);
+                        current = word;
+                        if (textwidth(current.c_str()) > w) {
+                            std::basic_string<TCHAR> chopped;
+                            for (size_t i = 0; i < current.size(); ++i) {
+                                chopped.push_back(current[i]);
+                                if (textwidth(chopped.c_str()) > w && chopped.size() > 1) {
+                                    chopped.pop_back();
+                                    if (!chopped.empty()) lines.push_back(chopped);
+                                    chopped.clear();
+                                    chopped.push_back(current[i]);
+                                }
+                            }
+                             current = chopped;
+                        }
+                    }
+                    word.clear();
+                }
+
+                if (atEnd) break;
+                if (ch == _T(' ')) {
+                    if (!current.empty()) current.push_back(_T(' '));
+                }
+            }
+            if (!word.empty()) {
+                if (current.empty()) current = word;
+                else {
+                    std::basic_string<TCHAR> candidate = current;
+                    candidate += _T(' ');
+                    candidate += word;
+                    if (textwidth(candidate.c_str()) <= w) current = candidate;
+                    else {
+                        lines.push_back(current);
+                        current = word;
+                    }
+                }
+            }
+            if (!current.empty()) lines.push_back(current);
+        };
+
+        int chosenFont = fontSize;
+        std::vector<std::basic_string<TCHAR>> lines;
+        for (; chosenFont >= 24; --chosenFont) {
+            ApplyChampionFont(chosenFont);
+            buildLines(lines);
+
+            int lineH = textheight(_T("A"));
+            int totalH = (int)lines.size() * lineH + ((int)lines.size() - 1) * UiScale(4);
+            int maxW = 0;
+            for (const auto& line : lines) {
+                int tw = textwidth(line.c_str());
+                if (tw > maxW) maxW = tw;
+            }
+            if (maxW <= w && totalH <= h) break;
+        }
+
+        if (lines.empty()) return;
+
+        int lineH = textheight(_T("A"));
+        int totalH = (int)lines.size() * lineH + ((int)lines.size() - 1) * UiScale(4);
+        int drawY = y + (h - totalH) / 2;
+        int centerX = x + w / 2;
+        int spacingAdjustPx = -UiScale(1);
+        for (const auto& line : lines) {
+            DrawTightTextLine(line, centerX, drawY, color, spacingAdjustPx);
+            drawY += lineH + UiScale(4);
+        }
+    };
+
+    int textX = bx + bw / 2;
+    int textY = by + (int)(bh * 0.82f);
+    int textW = (int)(bw * 0.72f);
+    int textH = (int)(bh * 0.12f);
+    drawCenteredLine(_T("WINNER!"), textX, by + UiScale(14), RGB(255, 180, 60), 18);
+    wrapAndDraw(championText, bx + (bw - textW) / 2, textY, textW, textH, 32, WHITE);
 }
 
-void ShowWinScreenUntilDismiss(int winner) {
-    ExMessage msg;
+static void DrawStoneScaledAt(int row, int col, IMAGE* img, float scale) {
+    if (!img || img->getwidth() <= 0 || img->getheight() <= 0) return;
+    int cellCenterX = OFFSET_X + col * CELL_SIZE + CELL_SIZE / 2;
+    int cellCenterY = OFFSET_Y + row * CELL_SIZE + CELL_SIZE / 2;
+    int base = StoneDrawSize();
+    int drawW = (int)(base * scale);
+    int drawH = drawW;
+    DrawSpriteScaled(cellCenterX - drawW / 2, cellCenterY - drawH / 2, drawW, drawH, img);
+}
+
+static void CollectWinningCells(std::vector<std::pair<int,int>>& out) {
+    out.clear();
+    int r1 = _WIN_R1, c1 = _WIN_C1, r2 = _WIN_R2, c2 = _WIN_C2;
+    int dr = 0, dc = 0;
+    if (r2 > r1) dr = 1; else if (r2 < r1) dr = -1; else dr = 0;
+    if (c2 > c1) dc = 1; else if (c2 < c1) dc = -1; else dc = 0;
+    int r = r1, c = c1;
     while (true) {
+        out.push_back({r,c});
+        if (r == r2 && c == c2) break;
+        r += dr; c += dc;
+        if ((int)out.size() > BOARD_SIZE) break;
+    }
+}
+
+void ShowWinScreen(int winner) {
+    ExMessage msg;
+
+    // Build winning cells (should be 5).
+    std::vector<std::pair<int,int>> winCells;
+    CollectWinningCells(winCells);
+
+    IMAGE* effectImg = NULL;
+    if (winner == -1 && g_hasPngX)      effectImg = &imgX;
+    else if (winner == 1 && g_hasPngO)  effectImg = &imgO;
+
+    // Animate each cell enlarging slightly in sequence.
+    const int stepsPerCell = 8;
+    const int msPerFrame = 20; // ~50fps
+    const float startScale = 1.0f;
+    const float endScale = 1.18f; // slightly larger
+
+    for (size_t idx = 0; idx < winCells.size(); ++idx) {
+        for (int step = 0; step <= stepsPerCell; ++step) {
+            float t = (float)step / (float)stepsPerCell;
+            float scale = startScale + (endScale - startScale) * t;
+
+            BeginBatchDraw();
+            RenderGame();
+            DrawWinningLine(winner);
+
+            // draw previously highlighted cells at endScale
+            for (size_t j = 0; j < idx; ++j) {
+                if (effectImg) DrawStoneScaledAt(winCells[j].first, winCells[j].second, effectImg, endScale);
+            }
+
+            // current cell animating
+            if (effectImg) DrawStoneScaledAt(winCells[idx].first, winCells[idx].second, effectImg, scale);
+
+            FlushBatchDraw();
+
+            // allow skipping animation on input
+            if (peekmessage(&msg, EM_KEY | EM_MOUSE | EM_WINDOW)) {
+                while (peekmessage(&msg, EM_KEY | EM_MOUSE | EM_WINDOW)) {
+                    if (msg.message == WM_LBUTTONDOWN || msg.message == WM_KEYDOWN) {
+                        // skip remaining animation
+                        idx = winCells.size();
+                        break;
+                    }
+                }
+                if (idx >= winCells.size()) break;
+            }
+
+            Sleep(msPerFrame);
+        }
+        if (idx >= winCells.size()) break;
+        // small pause after finishing this cell
+        DWORD tstart = GetTickCount();
+        while (GetTickCount() - tstart < 80) {
+            if (peekmessage(&msg, EM_KEY | EM_MOUSE | EM_WINDOW)) {
+                while (peekmessage(&msg, EM_KEY | EM_MOUSE | EM_WINDOW)) {
+                    if (msg.message == WM_LBUTTONDOWN || msg.message == WM_KEYDOWN) { idx = winCells.size(); break; }
+                }
+                if (idx >= winCells.size()) break;
+            }
+            Sleep(5);
+        }
+    }
+
+    // After all highlighted, show banner and wait 2.5 seconds (or dismiss on input).
+    DWORD bannerStartTime = GetTickCount();
+    while (GetTickCount() - bannerStartTime < 2500) { // 2500ms = 2.5 seconds
         BeginBatchDraw();
         RenderGame();
         DrawWinningLine(winner);
+        // draw all highlighted at final scale
+        if (effectImg) {
+            for (auto &p : winCells) DrawStoneScaledAt(p.first, p.second, effectImg, endScale);
+        }
         DrawWinBanner(winner);
         FlushBatchDraw();
 
+        if (!IsWindow(GetHWnd())) exit(0);
+        
+        // Vẫn cho phép người chơi bấm để bỏ qua (skip) 2.5 giây chờ nếu muốn
         while (peekmessage(&msg, EM_KEY | EM_MOUSE | EM_WINDOW)) {
             if (msg.message == WM_LBUTTONDOWN || msg.message == WM_KEYDOWN) return;
-            if (!IsWindow(GetHWnd())) exit(0);
         }
         Sleep(16);
     }
+    // Hết 2.5s thì tự động thoát khỏi hàm, đi tới mục tiếp theo
 }

@@ -1,91 +1,9 @@
-﻿/*
+/*
  * CaroGame - Do an Co So Lap Trinh
  * Truong Dai hoc Khoa hoc Tu nhien TP.HCM
  * C++ - Lap trinh thu tuc (khong su dung OOP)
  */
 
-/*#include <iostream>
-#include <cctype>
-#include "Defs/Defs.h"
-#include "View/View.h"
-#include "Model/Model.h"
-#include "Control/Control.h"
-#include "SaveLoad/SaveLoad.h"
-#include "Menu/Menu.h"
-
-#ifdef _WIN32
-#include <conio.h>
-#endif
-
-int main(void) {
-    int validEnter;
-    int menuChoice;
-
-#ifdef _WIN32
-    FixConsoleWindow();   
-#endif
-
-    _WIN_P1 = 0;
-    _WIN_P2 = 0;
-
-    menuChoice = ShowMainMenu();
-    if (menuChoice == 2) {
-        ResetData();
-        LoadGame();
-    } else if (menuChoice == 3) {
-        ExitGame();
-        return 0;
-    } else {
-        StartGame();
-    }
-
-    validEnter = 1;
-    while (1) {
-#ifdef _WIN32
-        _COMMAND = toupper(getch());
-#else
-        _COMMAND = toupper(std::cin.get());
-#endif
-
-        if (_COMMAND == 27) {
-            ExitGame();
-            return 0;
-        } else if (_COMMAND == 'L') {
-            SaveGame();
-        } else if (_COMMAND == 'T') {
-            LoadGame();
-        } else if (_COMMAND == 'A') {
-            MoveLeft();
-        } else if (_COMMAND == 'W') {
-            MoveUp();
-        } else if (_COMMAND == 'S') {
-            MoveDown();
-        } else if (_COMMAND == 'D') {
-            MoveRight();
-        } else if (_COMMAND == 13) {
-            switch (CheckBoard(_X, _Y)) {
-                case -1: std::cout << "X"; break;
-                case 1:  std::cout << "O"; break;
-                case 0:  validEnter = 0; break;
-            }
-
-            if (validEnter == 1) {
-                switch (ProcessFinish(TestBoard())) {
-                    case -1: case 1: case 0:
-                        if (AskContinue() != 'Y') {
-                            ExitGame();
-                            return 0;
-                        }
-                        StartGame();
-                        break;
-                }
-            }
-            validEnter = 1;
-        }
-    }
-
-    return 0;
-}*/
 #include "Audio/Audio.h"
 #include <cstdlib>
 #include <ctime>
@@ -111,6 +29,11 @@ static void RecordMove(int r, int c, int piece) {
     }
     _MOVE_COUNT++;
     _MOVE_ORDER[r][c] = _MOVE_COUNT;
+    if (piece == -1) {
+        _MOVE_P1++;
+    } else if (piece == 1) {
+        _MOVE_P2++;
+    }
 }
 
 /* ---------------------------------------------------------------
@@ -121,9 +44,15 @@ static bool PopMove(void) {
     _UNDO_TOP--;
     int r = _UNDO_STACK[_UNDO_TOP].r;
     int c = _UNDO_STACK[_UNDO_TOP].c;
+    int piece = _UNDO_STACK[_UNDO_TOP].piece;
     _MOVE_ORDER[r][c] = 0;
     _A[r][c].c = 0;
     _MOVE_COUNT--;
+    if (piece == -1) {
+        _MOVE_P1--;
+    } else if (piece == 1) {
+        _MOVE_P2--;
+    }
     return true;
 }
 
@@ -159,14 +88,21 @@ static void HandleGameOver(int winner, bool& isPlaying) {
         if (winner == -1) _WIN_P1++;
         else              _WIN_P2++;
         PlayWinSound();
-        ShowWinScreenUntilDismiss(winner);
+        ShowWinScreen(winner);
     } else {
         RenderGame();
         FlushBatchDraw();
         PlayClickSound();
         ShowNotifyDialog(_T("MATCH OVER"), _T("The board is full. It's a DRAW!"));
     }
-    isPlaying = false;
+    // After showing win/draw UI, ask the player if they want to play again.
+    // If yes, start a fresh game immediately; otherwise end the current match.
+    if (ShowConfirmDialog(_T("PLAY AGAIN"), _T("Do you want to play another match?"))) {
+        StartGame();
+        isPlaying = true;
+    } else {
+        isPlaying = false;
+    }
 }
 
 /* ---------------------------------------------------------------
@@ -242,9 +178,15 @@ int main() {
                     } else if (msg.vkcode == 'D' || msg.vkcode == VK_RIGHT) {
                         MoveRight(); needsRedraw = true;
                     } else if (msg.vkcode == 'L') {
-                        SaveGame(); needsRedraw = true;
+                        if (ShowSaveMenuUI()) {
+                            SaveGame();
+                            needsRedraw = true;
+                        }
                     } else if (msg.vkcode == 'T') {
-                        LoadGame(); needsRedraw = true;
+                        if (ShowLoadMenuUI()) {
+                            LoadGame();
+                            needsRedraw = true;
+                        }
                     } else if (msg.vkcode == VK_BACK) {
                         // Backspace = undo shortcut
                         if (DoUndo()) needsRedraw = true;
@@ -337,6 +279,8 @@ int main() {
                 needsRedraw = false;
             }
         }
+
+        ResetSessionStats();
         EndBatchDraw();
     }
 
